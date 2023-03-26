@@ -1,11 +1,12 @@
 const express = require('express');
+require('dotenv').config();
+require('./utils/db');
 
-require('../utils/db');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 400;
 const server = express();
 
-const Paciente = require('../models/Pacientes');
+const Paciente = require('./models/Pacientes');
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ router.get('/pacientes', async (req, res) => {
 });
 
 server.use('/', router);
+
 
 server.listen(PORT, () => {
   console.log(`Server running in http://localhost:${PORT}`);

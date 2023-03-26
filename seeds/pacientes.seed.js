@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+require('dotenv').config({path: '../.env'});
+const DB_URL=process.env.DB_URL;
 
 // Imporatmos el modelo Pet en este nuevo archivo.
 const Pacientes = require('../models/Pacientes');
@@ -33,7 +35,7 @@ const pacientes = [
 const pacientesDocuments = pacientes.map(pacientes => new Pacientes(pacientes));
 
 mongoose
-  .connect('mongodb+srv://davidmg2841:Escalada28@cluster0.swgeflz.mongodb.net/PFG?retryWrites=true&w=majority', {
+  .connect(DB_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })

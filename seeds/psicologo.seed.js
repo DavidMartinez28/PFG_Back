@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+require('dotenv').config({path: '../.env'});
+const DB_URL=process.env.DB_URL;
 
 // Imporatmos el modelo Pet en este nuevo archivo.
 const Psicologos = require('../models/Psicologos');
@@ -6,7 +8,7 @@ const Psicologos = require('../models/Psicologos');
 const psicologos = [
   {
     fecha_nacimiento: new Date ('1991-04-16'),
-    name: 'Luis Martinez',
+    name: 'German Diaz',
     correo: 'luis@gmail.com',
     descripcion: 'Psicólogo especializado en psicología clínica',
     telefono: 634876194,
@@ -14,7 +16,7 @@ const psicologos = [
   },
   {
     fecha_nacimiento: new Date ('1998-07-12'),
-    name: 'Andrea Sanz',
+    name: 'Andrea Sainz',
     correo: 'andrea@gmail.com',
     descripcion: 'Psicóloga especializada en psicología social',
     telefono: 653278102,
@@ -25,7 +27,7 @@ const psicologos = [
 const psicologosDocuments = psicologos.map(psicologos => new Psicologos(psicologos));
 
 mongoose
-  .connect('mongodb+srv://davidmg2841:Escalada28@cluster0.swgeflz.mongodb.net/PFG?retryWrites=true&w=majority', {
+  .connect(DB_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
