@@ -6,7 +6,7 @@ const userSchema = new Schema(
   {
     email: { type: String, required: true },
     password: { type: String, required: true },
-    tipo: { type: String, required: true },
+    type: { type: String, enum:['Psicologo', 'Paciente'], required: true },
   },
   {
    collection: 'usuarios'
