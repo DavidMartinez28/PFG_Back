@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 // URL local de nuestra base de datos en mongoose y su nombre upgrade_class_3
 const DB_URL = process.env.DB_URL
 
