@@ -26,7 +26,7 @@ const isAuth = (req, res, next) => {
     const jwtString = splits[1] // En esta variable guardamos la parte que contiene la información del token
     
     try{
-        var token = jwt.verify(jwtString, req.app.get("secretKey")); //verificamos que el token tiene una firma correcta
+        var token = jwt.verify(jwtString, "longer-secret-is-better"); //verificamos que el token tiene una firma correcta
 
     } catch(err){
         return next(err)

@@ -7,7 +7,7 @@ const pacientesSchema = new Schema(
   {
     fecha_nacimiento: {type: Date,required: true },
     name: { type: String, required: true },//La propiedad required hace que el campo sea obligatorio
-    correo: {type: String,required: true},
+    email:{ type: String, required: true, ref:'Usuarios'},
     descripcion: {type: String,required: true},
     telefono: {type: Number,required: true},
     sexo: {type: String,required: true},

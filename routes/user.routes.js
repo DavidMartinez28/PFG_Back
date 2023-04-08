@@ -5,6 +5,7 @@ const router = express.Router();
 const userSchema = require("../models/Usuario");
 const psicologoSchema = require("../models/Psicologos");
 const pacienteSchema = require("../models/Pacientes");
+const psicologoPacienteSchema = require("../models/PsicologoPaciente");
 const authorize = require("../utils/middlewares/auth");
 const { check, validationResult } = require("express-validator");
 
@@ -36,10 +37,10 @@ router.post(
           .then((response) => {
             if (req.body.type === "Psicologo") {
               const psicologo = new psicologoSchema({
-                user_id: response._id,
+                _id: response._id,
                 fecha_nacimiento: req.body.fecha_nacimiento,
                 name: req.body.name,
-                correo: req.body.correo,
+                email: req.body.email,
                 descripcion: req.body.descripcion,
                 telefono: req.body.telefono,
                 sexo: req.body.sexo,
@@ -59,10 +60,10 @@ router.post(
                 });
             } else if (req.body.type === "Paciente") {
               const paciente = new pacienteSchema({
-                user_id: response._id,
+                _id: response._id,
                 fecha_nacimiento: req.body.fecha_nacimiento,
                 name: req.body.name,
-                correo: req.body.correo,
+                email: req.body.email,
                 descripcion: req.body.descripcion,
                 telefono: req.body.telefono,
                 sexo: req.body.sexo,
@@ -117,8 +118,8 @@ router.post("/signin", async (req, res, next) => {
     }
     let jwtToken = jwt.sign(
       {
-        email: getUser.email,
-        userId: getUser._id,
+        email: user.email,
+        userId: user._id,
       },
       "longer-secret-is-better",
       {
@@ -128,22 +129,36 @@ router.post("/signin", async (req, res, next) => {
     res.status(200).json({
       token: jwtToken,
       expiresIn: 3600,
-      _id: getUser._id,
+      _id: user._id,
     });
-  } catch {
+  } catch (err) {
+    console.log(err);
     return res.status(401).json({
       message: "Authentication failed",
     });
   }
 });
 
-// Get Users
-router.route("/").get(async (req, res) => {
+// obtener pacientes
+router.route("/pacientes").get(async (req, res) => {
   try {
-    const response = await userSchema.find().exec();
+    const response = await pacienteSchema.find().exec();
     res.status(200).json(response);
   } catch (error) {
     return next(error);
+  }
+});
+
+//obtener pacientes segun su psicologo
+router.get('/psicologos/:id/pacientes', async (req, res) => {
+  try {
+    console.log(req.params.id);
+    
+    const pacientes = await psicologoPacienteSchema.find({id_psicologo: req.params.id}).populate('id_paciente');
+    res.json(pacientes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Hubo un error al obtener los pacientes.');
   }
 });
 
@@ -158,8 +173,17 @@ router
           error: "User not found",
         });
       }
+
+      let profile;
+      if (user.type === "Psicologo") {
+        profile = await psicologoSchema.findOne({ _id: user._id });
+      } else if (user.type === "Paciente") {
+        profile = await pacienteSchema.findOne({ _id: user._id });
+      }
+
       res.status(200).json({
-        msg: user,
+        user,
+        profile,
       });
     } catch (error) {
       next(error);
@@ -190,5 +214,6 @@ router.route("/delete-user/:id").delete(async (req, res, next) => {
     return next(error);
   }
 });
+
 
 module.exports = router;
