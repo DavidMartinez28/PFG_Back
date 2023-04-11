@@ -6,8 +6,10 @@ const userSchema = require("../models/Usuario");
 const psicologoSchema = require("../models/Psicologos");
 const pacienteSchema = require("../models/Pacientes");
 const psicologoPacienteSchema = require("../models/PsicologoPaciente");
+const filesSchema = require("../models/File")
 const authorize = require("../utils/middlewares/auth");
 const { check, validationResult } = require("express-validator");
+const upload = require("../utils/middlewares/files.middleware");
 
 // Sign-up
 router.post(
@@ -149,6 +151,19 @@ router.route("/pacientes").get(async (req, res) => {
   }
 });
 
+//Obtener paciente por id
+router.get("/paciente/:id", async (req, res, next) => {
+  try {
+    const paciente = await pacienteSchema.findById(req.params.id).exec();
+    if (!paciente) {
+      return res.status(404).json({ message: "Paciente no encontrado" });
+    }
+    res.status(200).json(paciente);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 //obtener pacientes segun su psicologo
 router.get('/psicologos/:id/pacientes', async (req, res) => {
   try {
@@ -215,5 +230,38 @@ router.route("/delete-user/:id").delete(async (req, res, next) => {
   }
 });
 
+//Subir archivo
+router.post('/upload',[upload.upload.single('myFile'), upload.uploadToCloudinary], async (req,res,next) => {
+  try {
+    const documentFile = req.file ? req.file.filename : null;
+    // Crearemos una instancia de character con los datos enviados
+    const newFile = new filesSchema({
+        id_psicologo: req.body.id_psicologo,
+        id_paciente: req.body.id_paciente,
+        nameFile: documentFile,
+        estado: req.body.estado,
+        urlFile: req.file_url || null
+    });
+    // Guardamos el personaje en la DB
+    const createdFile = await newFile.save();
+    return res.status(201).json(createdFile);
+} catch (error) {
+    // Lanzamos la función next con el error para que lo gestione Express
+    next(error);
+}
+})
+
+
+router.get('/psicologos/:id_psicologo/:id_paciente/documentos', async (req, res) => {
+  try {
+    console.log(req.params.id);
+    
+    const documentos = await filesSchema.find({id_psicologo: req.params.id_psicologo, id_paciente: req.params.id_paciente})
+    res.json(documentos);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send('Hubo un error al obtener los pacientes.');
+  }
+});
 
 module.exports = router;

@@ -3,6 +3,7 @@ require('dotenv').config();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const api=  require('./routes/user.routes');
+const document= require('./routes/documents.routes');
 require('./utils/db');
 
 
@@ -14,23 +15,14 @@ server.use(bodyParser.urlencoded({
 }));
 server.use(cors());
 
+
+
 // Aquí indicamos las rutas a usar
 server.use('/public', express.static('public'));
 
-server.use('/api', api)
-
-const Paciente = require('./models/Pacientes');
+server.use('/api', api);
 
 const router = express.Router();
-
-router.get('/pacientes', async (req, res) => {
-	try {
-		const pacientes = await Paciente.find();
-		return res.status(200).json(pacientes)
-	} catch (err) {
-		return res.status(500).json(err);
-	}
-});
 
 server.use('/', router);
 
