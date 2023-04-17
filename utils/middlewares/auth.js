@@ -33,7 +33,7 @@ const isAuth = (req, res, next) => {
     }
 
     const authority = { //Creamos un objeto authority que contienen la informacion del token, 
-//en este caso el id y el name del usuario
+//en este caso el id y el email del usuario
         userId   : token.userId,
         email : token.email
     }

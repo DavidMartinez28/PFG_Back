@@ -8,8 +8,7 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => {
         const ext = file.originalname.split('.').pop();
         const filename = file.originalname.replace(`.${ext}`, '');
-        const uniqueSuffix = `${Date.now()}`
-        cb(null, `${filename}-${uniqueSuffix}.${ext}`);
+        cb(null, `${filename}.${ext}`);
     },
     destination: (req, file, cb) => {
       cb(null, path.join(__dirname, '../../documentos'));

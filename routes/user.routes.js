@@ -7,6 +7,7 @@ const psicologoSchema = require("../models/Psicologos");
 const pacienteSchema = require("../models/Pacientes");
 const psicologoPacienteSchema = require("../models/PsicologoPaciente");
 const filesSchema = require("../models/File")
+const invitacionSchema = require("../models/Invitacion");
 const authorize = require("../utils/middlewares/auth");
 const { check, validationResult } = require("express-validator");
 const upload = require("../utils/middlewares/files.middleware");
@@ -125,7 +126,7 @@ router.post("/signin", async (req, res, next) => {
       },
       "longer-secret-is-better",
       {
-        expiresIn: "1h",
+        expiresIn: "3h",
       }
     );
     res.status(200).json({
@@ -141,10 +142,21 @@ router.post("/signin", async (req, res, next) => {
   }
 });
 
-// obtener pacientes
+//Obtener  todos los pacientes
 router.route("/pacientes").get(async (req, res) => {
   try {
-    const response = await pacienteSchema.find().exec();
+    const response = await pacienteSchema.find().select('name email');
+    res.status(200).json(response);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.route("/psicologo/:id/pacientes-invitables").get(async (req, res) => {
+  try {
+    const pacientesPsicologo = await psicologoPacienteSchema.find({id_psicologo :req.params.id})
+    const pacientesAsignados = pacientesPsicologo.map(p => p.id_paciente);
+    const response = await pacienteSchema.find({_id: {$nin: pacientesAsignados}}).select('name email _id');
     res.status(200).json(response);
   } catch (error) {
     return next(error);
@@ -261,6 +273,23 @@ router.get('/psicologos/:id_psicologo/:id_paciente/documentos', async (req, res)
   } catch (error) {
     console.log(error);
     res.status(500).send('Hubo un error al obtener los pacientes.');
+  }
+});
+
+
+//Crear invitacion
+router.post('/invitaciones', async (req, res, next) => {
+  try {
+    const { id_psicologo, id_paciente, estado } = req.body;
+    const invitacion = new invitacionSchema({
+      id_psicologo,
+      id_paciente,
+      estado
+    });
+    const savedInvitacion = await invitacion.save();
+    res.status(201).json(savedInvitacion);
+  } catch (error) {
+    return next(error);
   }
 });
 
