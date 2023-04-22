@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 // Creamos el esquema de personajes
-const invitacionSchema = new Schema(
+const sesionSchema = new Schema(
   {
     id_psicologo: {
         type: mongoose.Schema.Types.ObjectId,
@@ -13,9 +13,10 @@ const invitacionSchema = new Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Pacientes'   
     },
-    estado: {type: String},
-    paciente_nombre: {type: String},
-    psicologo_nombre: {type: String},
+    fecha: {type: Date,required: true },
+    estado: { type: String, required: true },//La propiedad required hace que el campo sea obligatorio
+    nombrePaciente: { type: String, required: true },
+    nombrePsicologo: { type: String, required: true },
   },
   {
     // Esta propiedad servirá para guardar las fechas de creación y actualización de los documentos
@@ -24,5 +25,5 @@ const invitacionSchema = new Schema(
 );
 
 // Creamos y exportamos el modelo Character
-const Invitacion = mongoose.model('Invitacion', invitacionSchema);
-module.exports = Invitacion;
+const Sesiones = mongoose.model('Sesiones', sesionSchema);
+module.exports = Sesiones;

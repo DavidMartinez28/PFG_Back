@@ -6,8 +6,9 @@ const userSchema = require("../models/Usuario");
 const psicologoSchema = require("../models/Psicologos");
 const pacienteSchema = require("../models/Pacientes");
 const psicologoPacienteSchema = require("../models/PsicologoPaciente");
-const filesSchema = require("../models/File")
+const filesSchema = require("../models/File");
 const invitacionSchema = require("../models/Invitacion");
+const sesionSchema = require("../models/Sesion");
 const authorize = require("../utils/middlewares/auth");
 const { check, validationResult } = require("express-validator");
 const upload = require("../utils/middlewares/files.middleware");
@@ -145,19 +146,47 @@ router.post("/signin", async (req, res, next) => {
 //Obtener  todos los pacientes
 router.route("/pacientes").get(async (req, res) => {
   try {
-    const response = await pacienteSchema.find().select('name email');
+    const response = await pacienteSchema.find().select("name email");
     res.status(200).json(response);
   } catch (error) {
     return next(error);
   }
 });
 
+//Obtener los pacientes que no estan invitados
 router.route("/psicologo/:id/pacientes-invitables").get(async (req, res) => {
   try {
-    const pacientesPsicologo = await psicologoPacienteSchema.find({id_psicologo :req.params.id})
-    const pacientesAsignados = pacientesPsicologo.map(p => p.id_paciente);
-    const response = await pacienteSchema.find({_id: {$nin: pacientesAsignados}}).select('name email _id');
+    const pacientesPsicologo = await psicologoPacienteSchema.find({
+      id_psicologo: req.params.id,
+    });
+    const pacientesAsignados = pacientesPsicologo.map((p) => p.id_paciente);
+
+    const invitacionesPendientes = await invitacionSchema
+      .find({ id_psicologo: req.params.id, estado: "pendiente" })
+      .select("id_paciente");
+    const pacientesExcluidos = invitacionesPendientes.map((i) => i.id_paciente);
+
+    const response = await pacienteSchema
+      .find({
+        _id: { $nin: pacientesAsignados },
+        $or: [{ _id: { $nin: pacientesExcluidos } }],
+      })
+      .select("name email _id");
+
     res.status(200).json(response);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Obtener psicologo por id
+router.get("/psicologo/:id", async (req, res, next) => {
+  try {
+    const psicologo = await psicologoSchema.findById(req.params.id).exec();
+    if (!psicologo) {
+      return res.status(404).json({ message: "Paciente no encontrado" });
+    }
+    res.status(200).json(psicologo);
   } catch (error) {
     return next(error);
   }
@@ -177,15 +206,32 @@ router.get("/paciente/:id", async (req, res, next) => {
 });
 
 //obtener pacientes segun su psicologo
-router.get('/psicologos/:id/pacientes', async (req, res) => {
+router.get("/psicologos/:id/pacientes", async (req, res) => {
   try {
     console.log(req.params.id);
-    
-    const pacientes = await psicologoPacienteSchema.find({id_psicologo: req.params.id}).populate('id_paciente');
+
+    const pacientes = await psicologoPacienteSchema
+      .find({ id_psicologo: req.params.id })
+      .populate("id_paciente");
     res.json(pacientes);
   } catch (error) {
     console.log(error);
-    res.status(500).send('Hubo un error al obtener los pacientes.');
+    res.status(500).send("Hubo un error al obtener los pacientes.");
+  }
+});
+
+//obtener psicologos segun el paciente
+router.get("/pacientes/:id/psicologos", async (req, res) => {
+  try {
+    console.log(req.params.id);
+
+    const psicologos = await psicologoPacienteSchema
+      .find({ id_paciente: req.params.id })
+      .populate("id_psicologo");
+    res.json(psicologos);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Hubo un error al obtener los pacientes.");
   }
 });
 
@@ -243,48 +289,65 @@ router.route("/delete-user/:id").delete(async (req, res, next) => {
 });
 
 //Subir archivo
-router.post('/upload',[upload.upload.single('myFile'), upload.uploadToCloudinary], async (req,res,next) => {
-  try {
-    const documentFile = req.file ? req.file.filename : null;
-    // Crearemos una instancia de character con los datos enviados
-    const newFile = new filesSchema({
+router.post(
+  "/upload",
+  [upload.upload.single("myFile"), upload.uploadToCloudinary],
+  async (req, res, next) => {
+    try {
+      const documentFile = req.file ? req.file.filename : null;
+      // Crearemos una instancia de character con los datos enviados
+      const newFile = new filesSchema({
         id_psicologo: req.body.id_psicologo,
         id_paciente: req.body.id_paciente,
         nameFile: documentFile,
         estado: req.body.estado,
-        urlFile: req.file_url || null
-    });
-    // Guardamos el personaje en la DB
-    const createdFile = await newFile.save();
-    return res.status(201).json(createdFile);
-} catch (error) {
-    // Lanzamos la función next con el error para que lo gestione Express
-    next(error);
-}
-})
-
-
-router.get('/psicologos/:id_psicologo/:id_paciente/documentos', async (req, res) => {
-  try {
-    console.log(req.params.id);
-    
-    const documentos = await filesSchema.find({id_psicologo: req.params.id_psicologo, id_paciente: req.params.id_paciente})
-    res.json(documentos);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send('Hubo un error al obtener los pacientes.');
+        urlFile: req.file_url || null,
+      });
+      // Guardamos el personaje en la DB
+      const createdFile = await newFile.save();
+      return res.status(201).json(createdFile);
+    } catch (error) {
+      // Lanzamos la función next con el error para que lo gestione Express
+      next(error);
+    }
   }
-});
+);
 
+//Obtener los documentos de un psicologo asignados a un paciente
+router.get(
+  "/psicologos/:id_psicologo/:id_paciente/documentos",
+  async (req, res) => {
+    try {
+      console.log(req.params.id);
+
+      const documentos = await filesSchema.find({
+        id_psicologo: req.params.id_psicologo,
+        id_paciente: req.params.id_paciente,
+      });
+      res.json(documentos);
+    } catch (error) {
+      console.log(error);
+      res.status(500).send("Hubo un error al obtener los pacientes.");
+    }
+  }
+);
 
 //Crear invitacion
-router.post('/invitaciones', async (req, res, next) => {
+router.post("/invitaciones", async (req, res, next) => {
   try {
-    const { id_psicologo, id_paciente, estado } = req.body;
+    const {
+      id_psicologo,
+      id_paciente,
+      estado,
+      paciente_nombre,
+      psicologo_nombre,
+    } = req.body;
     const invitacion = new invitacionSchema({
       id_psicologo,
       id_paciente,
-      estado
+      estado,
+      paciente_nombre,
+      psicologo_nombre,
     });
     const savedInvitacion = await invitacion.save();
     res.status(201).json(savedInvitacion);
@@ -293,4 +356,82 @@ router.post('/invitaciones', async (req, res, next) => {
   }
 });
 
+//Obtener las invitaciones de un psicologo
+router.get("/psicologos/:id/invitaciones", async (req, res, next) => {
+  try {
+    const id_psicologo = req.params.id;
+    const invitaciones = await invitacionSchema.find({
+      id_psicologo: id_psicologo,
+    });
+    res.status(200).json(invitaciones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Obtener las invitaciones de un paciente
+router.get("/pacientes/:id/invitaciones", async (req, res, next) => {
+  try {
+    const id_paciente = req.params.id;
+    const invitaciones = await invitacionSchema.find({
+      id_paciente: id_paciente,
+    });
+    res.status(200).json(invitaciones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Eliminar una invitacion
+router.delete("/delete-invitaciones/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await invitacionSchema.findByIdAndDelete(id);
+    res.status(200).json({ message: "Invitación eliminada" });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+
+//Crear relacion entre psicologo y paciente
+router.post("/crear-relacion", async (req, res, next) => {
+  try {
+    const {
+      id_psicologo,
+      id_paciente,
+    } = req.body;
+
+    const relacion = new psicologoPacienteSchema({
+      id_psicologo,
+      id_paciente,
+    });
+
+    const savedRelacion = await relacion.save();
+    res.status(201).json(savedRelacion);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Crear sesion
+router.post('/create-sesion', async (req, res, next) => {
+  try {
+    const { fecha, id_psicologo, id_paciente, estado, nombrePaciente, nombrePsicologo } = req.body;
+    const sesion = new sesionSchema({
+      fecha,
+      id_psicologo,
+      id_paciente,
+      estado,
+      nombrePaciente,
+      nombrePsicologo
+
+    });
+    const savedSesion = await sesion.save();
+    res.status(201).json(savedSesion);
+  } catch (error) {
+    return next(error);
+  }
+});
+  
 module.exports = router;
