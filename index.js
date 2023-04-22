@@ -3,7 +3,6 @@ require('dotenv').config();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const api=  require('./routes/user.routes');
-const document= require('./routes/documents.routes');
 require('./utils/db');
 
 
