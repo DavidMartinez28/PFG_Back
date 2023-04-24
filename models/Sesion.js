@@ -7,7 +7,7 @@ const sesionSchema = new Schema(
   {
     id_psicologo: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Psicologo'
+        ref: 'Psicologos'
     },
     id_paciente: {
         type: mongoose.Schema.Types.ObjectId,

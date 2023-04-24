@@ -313,6 +313,32 @@ router.post(
   }
 );
 
+//Modificar el estado del documneto
+router.put('/documentos-estado/:idDocumento', async (req, res, next) => {
+  try {
+    const { idDocumento } = req.params;
+    const { estado } = req.body;
+    const documento = await filesSchema.findByIdAndUpdate(idDocumento, { estado }, { new: true });
+    if (!documento) {
+      return res.status(404).json({ message: 'El documento no existe' });
+    }
+    return res.json(documento);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Obtener solo los documentos visibles de un paciente para un psicologo
+router.get('/pacientes/:id_paciente/psicologos/:id_psicologo/documentos-visibles', async (req, res, next) => {
+  try {
+    const documentos = await filesSchema.find({ id_paciente: req.params.id_paciente, id_psicologo: req.params.id_psicologo, estado: 'visible' });
+    res.status(200).json(documentos);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+
 //Obtener los documentos de un psicologo asignados a un paciente
 router.get(
   "/psicologos/:id_psicologo/:id_paciente/documentos",
@@ -433,5 +459,27 @@ router.post('/create-sesion', async (req, res, next) => {
     return next(error);
   }
 });
-  
+
+//Obtener sesiones de psicologo
+router.get('/sesiones/:id_psicologo', async (req, res, next) => {
+  try {
+    const { id_psicologo } = req.params;
+    const sesiones = await sesionSchema.find({ id_psicologo });
+    res.status(200).json(sesiones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Obtener sesiones de paciente
+router.get('/sesiones/paciente/:id_paciente', async (req, res, next) => {
+  try {
+    const { id_paciente } = req.params;
+    const sesiones = await sesionSchema.find({ id_paciente });
+    res.status(200).json(sesiones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;
