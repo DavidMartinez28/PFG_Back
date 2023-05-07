@@ -12,6 +12,7 @@ const sesionSchema = require("../models/Sesion");
 const authorize = require("../utils/middlewares/auth");
 const { check, validationResult } = require("express-validator");
 const upload = require("../utils/middlewares/files.middleware");
+const emailer = require('../utils/middlewares/configMensaje');
 
 // Sign-up
 router.post(
@@ -21,11 +22,19 @@ router.post(
     check("password", "Password should be between 5 to 8 characters long")
       .not()
       .isEmpty()
-      .isLength({ min: 5, max: 8 }),
+      .isLength({ min: 5, max: 15 }),
     check("type", "Tipo is required").not().isEmpty(),
   ],
   (req, res, next) => {
     const errors = validationResult(req);
+
+    const emailInfo = {
+      from: '"PsychoGood" <psychogoodapp@gmail.com>', // sender address
+      to: req.body.email, // list of receivers
+      subject: "Tu cuenta en Psychogood ha sido creada ✔", // Subject line
+      text: "Hello world?", // plain text body
+      html: "<b>Hello world?</b>", // html body
+    }
 
     if (!errors.isEmpty()) {
       return res.status(422).jsonp(errors.array());
@@ -48,6 +57,7 @@ router.post(
                 descripcion: req.body.descripcion,
                 telefono: req.body.telefono,
                 sexo: req.body.sexo,
+                foto: req.body.foto,
               });
               psicologo
                 .save()
@@ -56,6 +66,7 @@ router.post(
                     message: "User successfully created!",
                     result: response,
                   });
+                  emailer.sendMail(emailInfo)
                 })
                 .catch((error) => {
                   res.status(500).json({
@@ -71,6 +82,7 @@ router.post(
                 descripcion: req.body.descripcion,
                 telefono: req.body.telefono,
                 sexo: req.body.sexo,
+                foto: req.body.foto,
               });
               paciente
                 .save()
@@ -79,6 +91,7 @@ router.post(
                     message: "User successfully created!",
                     result: response,
                   });
+                  emailer.sendMail(emailInfo)
                 })
                 .catch((error) => {
                   res.status(500).json({
@@ -90,6 +103,7 @@ router.post(
                 message: "User successfully created!",
                 result: response,
               });
+              emailer.sendMail(emailInfo)
             }
           })
           .catch((error) => {
@@ -110,14 +124,14 @@ router.post("/signin", async (req, res, next) => {
     });
     if (!user) {
       return res.status(401).json({
-        message: "Email not found",
+        message: "Correo no encontrado",
       });
     }
     const response = await bcrypt.compare(req.body.password, user.password);
 
     if (!response) {
       return res.status(401).json({
-        message: "Unknown password",
+        message: "Contraseña no registrada",
       });
     }
     let jwtToken = jwt.sign(
@@ -141,6 +155,67 @@ router.post("/signin", async (req, res, next) => {
       message: "Authentication failed",
     });
   }
+});
+
+//Actualizar perfil de usuario
+router.put("/update-user/:id", (req, res, next) => {
+  const id = req.params.id;
+  const updates = req.body;
+
+  // Comprueba si el usuario existe
+  userSchema
+    .findById(id)
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      // Actualiza el perfil del usuario
+      userSchema
+        .findByIdAndUpdate(id, updates, { new: true })
+        .then((updatedUser) => {
+          if (updatedUser.type === "Psicologo") {
+            psicologoSchema
+              .findOneAndUpdate({ _id: id }, updates, { new: true })
+              .then(() => {
+                res.status(200).json(updatedUser);
+              })
+              .catch((error) => {
+                res.status(500).json({
+                  error: error,
+                });
+              });
+          } else if (updatedUser.type === "Paciente") {
+            pacienteSchema
+              .findOneAndUpdate({ _id: id }, updates, { new: true })
+              .then(() => {
+                res.status(200).json( updatedUser);
+              })
+              .catch((error) => {
+                res.status(500).json({
+                  error: error,
+                });
+              });
+          } else {
+            res.status(200).json({
+              message: "User profile updated successfully",
+              result: updatedUser,
+            });
+          }
+        })
+        .catch((error) => {
+          res.status(500).json({
+            error: error,
+          });
+        });
+    })
+    .catch((error) => {
+      res.status(500).json({
+        error: error,
+      });
+    });
 });
 
 //Obtener  todos los pacientes
@@ -314,13 +389,17 @@ router.post(
 );
 
 //Modificar el estado del documneto
-router.put('/documentos-estado/:idDocumento', async (req, res, next) => {
+router.put("/documentos-estado/:idDocumento", async (req, res, next) => {
   try {
     const { idDocumento } = req.params;
     const { estado } = req.body;
-    const documento = await filesSchema.findByIdAndUpdate(idDocumento, { estado }, { new: true });
+    const documento = await filesSchema.findByIdAndUpdate(
+      idDocumento,
+      { estado },
+      { new: true }
+    );
     if (!documento) {
-      return res.status(404).json({ message: 'El documento no existe' });
+      return res.status(404).json({ message: "El documento no existe" });
     }
     return res.json(documento);
   } catch (error) {
@@ -329,15 +408,21 @@ router.put('/documentos-estado/:idDocumento', async (req, res, next) => {
 });
 
 //Obtener solo los documentos visibles de un paciente para un psicologo
-router.get('/pacientes/:id_paciente/psicologos/:id_psicologo/documentos-visibles', async (req, res, next) => {
-  try {
-    const documentos = await filesSchema.find({ id_paciente: req.params.id_paciente, id_psicologo: req.params.id_psicologo, estado: 'visible' });
-    res.status(200).json(documentos);
-  } catch (error) {
-    return next(error);
+router.get(
+  "/pacientes/:id_paciente/psicologos/:id_psicologo/documentos-visibles",
+  async (req, res, next) => {
+    try {
+      const documentos = await filesSchema.find({
+        id_paciente: req.params.id_paciente,
+        id_psicologo: req.params.id_psicologo,
+        estado: "visible",
+      });
+      res.status(200).json(documentos);
+    } catch (error) {
+      return next(error);
+    }
   }
-});
-
+);
 
 //Obtener los documentos de un psicologo asignados a un paciente
 router.get(
@@ -419,14 +504,10 @@ router.delete("/delete-invitaciones/:id", async (req, res, next) => {
   }
 });
 
-
 //Crear relacion entre psicologo y paciente
 router.post("/crear-relacion", async (req, res, next) => {
   try {
-    const {
-      id_psicologo,
-      id_paciente,
-    } = req.body;
+    const { id_psicologo, id_paciente } = req.body;
 
     const relacion = new psicologoPacienteSchema({
       id_psicologo,
@@ -441,19 +522,57 @@ router.post("/crear-relacion", async (req, res, next) => {
 });
 
 //Crear sesion
-router.post('/create-sesion', async (req, res, next) => {
+router.post("/create-sesion", async (req, res, next) => {
+
+  const emailInfo = {
+    from: '"PsychoGood" <psychogoodapp@gmail.com>', // sender address
+    to: '', // list of receivers
+    subject: "Se ha creado una sesion para ti", // Subject line
+    text: '', // plain text body
+    html: '', // html body
+  }
+
   try {
-    const { fecha, id_psicologo, id_paciente, estado, nombrePaciente, nombrePsicologo } = req.body;
+    const {
+      fecha,
+      id_psicologo,
+      id_paciente,
+      estado,
+      nombrePaciente,
+      nombrePsicologo,
+    } = req.body;
+
+    const paciente = await pacienteSchema.findById(id_paciente)
+    const fechaFormato = new Date(fecha);
+    const dia = fechaFormato.getDate()
+    const mes = fechaFormato.toLocaleString('default', { month: 'long' });
+    const año = fechaFormato.getFullYear();
+    const hora = fechaFormato.getHours();
+    const minutos = fechaFormato.getMinutes()
+
     const sesion = new sesionSchema({
       fecha,
       id_psicologo,
       id_paciente,
       estado,
       nombrePaciente,
-      nombrePsicologo
-
+      nombrePsicologo,
     });
     const savedSesion = await sesion.save();
+
+    emailInfo.to = paciente.email;
+    emailInfo.html =  
+      `<div style="max-width: 500px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 30px; border: 1px solid black">
+        <h2 style="text-align: center; color: #333;">Han programado una sesión para ti</h2>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Hola ${nombrePaciente}, te informamos de que ${nombrePsicologo} ha programado una sesión para ti el ${dia} de ${mes} de ${año}
+        a las ${hora}:${minutos}.</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">¡Esperamos verte pronto en nuestra plataforma!</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Saludos cordiales,</p>
+        <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px"/>
+      </div>`;
+
+    emailer.sendMail(emailInfo);
+
     res.status(201).json(savedSesion);
   } catch (error) {
     return next(error);
@@ -461,7 +580,7 @@ router.post('/create-sesion', async (req, res, next) => {
 });
 
 //Obtener sesiones de psicologo
-router.get('/sesiones/:id_psicologo', async (req, res, next) => {
+router.get("/sesiones/:id_psicologo", async (req, res, next) => {
   try {
     const { id_psicologo } = req.params;
     const sesiones = await sesionSchema.find({ id_psicologo });
@@ -472,11 +591,22 @@ router.get('/sesiones/:id_psicologo', async (req, res, next) => {
 });
 
 //Obtener sesiones de paciente
-router.get('/sesiones/paciente/:id_paciente', async (req, res, next) => {
+router.get("/sesiones/paciente/:id_paciente", async (req, res, next) => {
   try {
     const { id_paciente } = req.params;
     const sesiones = await sesionSchema.find({ id_paciente });
     res.status(200).json(sesiones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Eliminar una sesion
+router.delete("/delete-sesion/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await sesionSchema.findByIdAndDelete(id);
+    res.status(200).json({ message: "Sesion eliminada" });
   } catch (error) {
     return next(error);
   }

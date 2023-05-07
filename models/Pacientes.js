@@ -11,6 +11,7 @@ const pacientesSchema = new Schema(
     descripcion: {type: String,required: true},
     telefono: {type: Number,required: true},
     sexo: {type: String,required: true},
+    foto: {type: String,required: true}
   },
   {
     // Esta propiedad servirá para guardar las fechas de creación y actualización de los documentos
