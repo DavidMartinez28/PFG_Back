@@ -568,7 +568,7 @@ router.post("/create-sesion", async (req, res, next) => {
         a las ${hora}:${minutos}.</p>
         <p style="font-size: 16px; line-height: 1.5; color: #555;">¡Esperamos verte pronto en nuestra plataforma!</p>
         <p style="font-size: 16px; line-height: 1.5; color: #555;">Saludos cordiales,</p>
-        <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px"/>
+        <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px; margin-left: 20px"/>
       </div>`;
 
     emailer.sendMail(emailInfo);

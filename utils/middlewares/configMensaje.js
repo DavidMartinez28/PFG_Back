@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-
+const MAIL_PASS = process.env.MAIL_PASS;
 
 const createTrans = () => {
 const transporter = nodemailer.createTransport({
@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     secure: true, // true for 465, false for other ports
     auth: {
       user: 'psychogoodapp@gmail.com', // generated ethereal user
-      pass: 'nkjjtobbelljzgiu', // generated ethereal password
+      pass: MAIL_PASS, // generated ethereal password
     }
   });
 
