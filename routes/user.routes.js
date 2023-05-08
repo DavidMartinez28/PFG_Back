@@ -445,6 +445,13 @@ router.get(
 
 //Crear invitacion
 router.post("/invitaciones", async (req, res, next) => {
+  const emailInfo = {
+    from: '"PsychoGood" <psychogoodapp@gmail.com>', // sender address
+    to: '', // list of receivers
+    subject: "Nueva solicitud de amistad", // Subject line
+    text: '', // plain text body
+    html: '', // html body
+  }
   try {
     const {
       id_psicologo,
@@ -453,6 +460,9 @@ router.post("/invitaciones", async (req, res, next) => {
       paciente_nombre,
       psicologo_nombre,
     } = req.body;
+
+    const paciente = await pacienteSchema.findById(id_paciente);
+
     const invitacion = new invitacionSchema({
       id_psicologo,
       id_paciente,
@@ -461,6 +471,19 @@ router.post("/invitaciones", async (req, res, next) => {
       psicologo_nombre,
     });
     const savedInvitacion = await invitacion.save();
+
+    emailInfo.to = paciente.email;
+    emailInfo.html =  
+      `<div style="max-width: 500px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 30px; border: 1px solid black">
+        <h2 style="text-align: center; color: #333;">Nueva solicitud de amistad</h2>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Hola ${paciente_nombre}, el psicólogo ${psicologo_nombre} te ha invitado a su espacio de gestión de pacientes.</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">¡Esperamos verte pronto en nuestra plataforma!</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Saludos cordiales,</p>
+        <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px; margin-left: 20px"/>
+      </div>`;
+
+    emailer.sendMail(emailInfo);
+
     res.status(201).json(savedInvitacion);
   } catch (error) {
     return next(error);
@@ -506,8 +529,21 @@ router.delete("/delete-invitaciones/:id", async (req, res, next) => {
 
 //Crear relacion entre psicologo y paciente
 router.post("/crear-relacion", async (req, res, next) => {
+  const emailInfo = {
+    from: '"PsychoGood" <psychogoodapp@gmail.com>', // sender address
+    to: '', // list of receivers
+    subject: "Invitación aceptada", // Subject line
+    text: '', // plain text body
+    html: '', // html body
+  }
   try {
     const { id_psicologo, id_paciente } = req.body;
+
+    const psicologo = await psicologoSchema.findById(id_psicologo);
+    const psicologo_nombre = psicologo.name;
+    
+    const paciente = await pacienteSchema.findById(id_paciente);
+    const paciente_nombre = paciente.name
 
     const relacion = new psicologoPacienteSchema({
       id_psicologo,
@@ -515,6 +551,19 @@ router.post("/crear-relacion", async (req, res, next) => {
     });
 
     const savedRelacion = await relacion.save();
+
+    emailInfo.to = psicologo.email;
+    emailInfo.html =  
+      `<div style="max-width: 500px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 30px; border: 1px solid black">
+        <h2 style="text-align: center; color: #333;">Invitación aceptada</h2>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Hola ${psicologo_nombre}, el paciente ${paciente_nombre} ha aceptado tu invitación.</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">¡Esperamos verte pronto en nuestra plataforma!</p>
+        <p style="font-size: 16px; line-height: 1.5; color: #555;">Saludos cordiales,</p>
+        <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px; margin-left: 20px"/>
+      </div>`;
+
+    emailer.sendMail(emailInfo);
+
     res.status(201).json(savedRelacion);
   } catch (error) {
     return next(error);
@@ -583,7 +632,7 @@ router.post("/create-sesion", async (req, res, next) => {
 router.get("/sesiones/:id_psicologo", async (req, res, next) => {
   try {
     const { id_psicologo } = req.params;
-    const sesiones = await sesionSchema.find({ id_psicologo });
+    const sesiones = await sesionSchema.find({ id_psicologo, fecha: { $gt: new Date() } });
     res.status(200).json(sesiones);
   } catch (error) {
     return next(error);
@@ -594,7 +643,7 @@ router.get("/sesiones/:id_psicologo", async (req, res, next) => {
 router.get("/sesiones/paciente/:id_paciente", async (req, res, next) => {
   try {
     const { id_paciente } = req.params;
-    const sesiones = await sesionSchema.find({ id_paciente });
+    const sesiones = await sesionSchema.find({ id_paciente, fecha: { $gt: new Date() } });
     res.status(200).json(sesiones);
   } catch (error) {
     return next(error);
