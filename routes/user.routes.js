@@ -650,6 +650,31 @@ router.get("/sesiones/paciente/:id_paciente", async (req, res, next) => {
   }
 });
 
+
+//Obtener sesiones pendientes de un psicólogo asociadas a un paciente concreto.
+router.get("/sesiones/psicologo/:id_psicologo/paciente/:id_paciente", async (req, res, next) => {
+  try {
+    const { id_psicologo, id_paciente } = req.params;
+    const sesiones = await sesionSchema.find({ id_psicologo, id_paciente, fecha: { $gt: new Date() } });
+    res.status(200).json(sesiones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Obtener sesiones pasadas de un psicólogo asociadas a un paciente concreto.
+router.get("/sesiones/psicologo/:id_psicologo/paciente/:id_paciente/anteriores", async (req, res, next) => {
+  try {
+    const { id_psicologo, id_paciente } = req.params;
+    const sesiones = await sesionSchema.find({ id_psicologo, id_paciente, fecha: { $lt: new Date() } });
+    res.status(200).json(sesiones);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+
+
 //Eliminar una sesion
 router.delete("/delete-sesion/:id", async (req, res, next) => {
   try {
