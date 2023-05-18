@@ -25,20 +25,33 @@ router.post(
       .isLength({ min: 5, max: 15 }),
     check("type", "Tipo is required").not().isEmpty(),
   ],
-  (req, res, next) => {
+  async (req, res, next) => {
     const errors = validationResult(req);
 
     const emailInfo = {
       from: '"PsychoGood" <psychogoodapp@gmail.com>', // sender address
       to: req.body.email, // list of receivers
       subject: "Tu cuenta en Psychogood ha sido creada ✔", // Subject line
-      text: "Hello world?", // plain text body
-      html: "<b>Hello world?</b>", // html body
+      text: "Tu cuenta en PsychoGood ha sido creada correctamente", // plain text body
+      html: `<div style="max-width: 500px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 30px; border: 1px solid black">
+      <h2 style="text-align: center; color: #333;">Nuevo registro en PsychoGood</h2>
+      <p style="font-size: 16px; line-height: 1.5; color: #555;">Tu cuenta en PsychoGood ha sido creada con éxito</p>
+      <p style="font-size: 16px; line-height: 1.5; color: #555;">¡Esperamos verte pronto en nuestra plataforma!</p>
+      <p style="font-size: 16px; line-height: 1.5; color: #555;">Saludos cordiales,</p>
+      <img src= "https://res.cloudinary.com/dz5dcbc6b/image/upload/v1683455341/psychogood-low-resolution-logo-black-on-transparent-background_inpc8d.png" style= "max-width: 200px; max-height: 200px; margin-left: 20px"/>
+      </div>`
     }
 
     if (!errors.isEmpty()) {
       return res.status(422).jsonp(errors.array());
-    } else {
+    }
+
+      const existingUser = await userSchema.findOne({ email: req.body.email });
+      if (existingUser) {
+        return res.status(401).json({
+          message: "El correo electrónico ya está en uso.",
+        });
+      }
       bcrypt.hash(req.body.password, 10).then((hash) => {
         const user = new userSchema({
           email: req.body.email,
@@ -113,7 +126,6 @@ router.post(
           });
       });
     }
-  }
 );
 
 // Sign-in
@@ -295,6 +307,33 @@ router.get("/psicologos/:id/pacientes", async (req, res) => {
   }
 });
 
+//Eliminar paciente por un psicólogo
+router.delete("/psicologos/:id/eliminar-paciente/:pacienteId", async (req, res) => {
+  try {
+    const psicologoId = req.params.id;
+    const pacienteId = req.params.pacienteId;
+
+    // Verificar si el paciente está asociado al psicólogo
+    const asociacion = await psicologoPacienteSchema.findOne({
+      id_psicologo: psicologoId,
+      id_paciente: pacienteId
+    });
+
+    if (!asociacion) {
+      return res.status(404).json({ message: "El paciente no está asociado a este psicólogo." });
+    }
+
+    // Eliminar la asociación entre el psicólogo y el paciente
+    await psicologoPacienteSchema.findByIdAndDelete(asociacion._id);
+
+    res.json({ message: "El paciente ha sido eliminado del psicólogo exitosamente." });
+  } catch (error) {
+    console.log(error);
+    res.status(500).send("Hubo un error al eliminar el paciente del psicólogo.");
+  }
+});
+
+
 //obtener psicologos segun el paciente
 router.get("/pacientes/:id/psicologos", async (req, res) => {
   try {
@@ -402,6 +441,17 @@ router.put("/documentos-estado/:idDocumento", async (req, res, next) => {
       return res.status(404).json({ message: "El documento no existe" });
     }
     return res.json(documento);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+//Eliminar documento
+router.delete("/delete/documentos/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await filesSchema.findByIdAndDelete(id);
+    res.status(200).json({ message: "Documento eliminado" });
   } catch (error) {
     return next(error);
   }
