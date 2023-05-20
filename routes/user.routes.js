@@ -19,7 +19,7 @@ router.post(
   "/register-user",
   [
     check("email", "Email is required").not().isEmpty(),
-    check("password", "Password should be between 5 to 8 characters long")
+    check("password", "Password should be between 5 to 15 characters long")
       .not()
       .isEmpty()
       .isLength({ min: 5, max: 15 }),
